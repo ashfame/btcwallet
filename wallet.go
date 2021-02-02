@@ -19,8 +19,6 @@ import (
 	"github.com/tyler-smith/go-bip39"
 )
 
-var network string
-
 var errWalletNotInitialized = errors.New("wallet has not been initialized")
 var errIncorrectDerivationPath = errors.New("incorrect derivation path provided")
 
