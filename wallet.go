@@ -175,8 +175,8 @@ func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) 
 	return
 }
 
-// GetBitcoinAccountXPub returns the xpub key of account specified by index using BIP44 derivation scheme
-func (w *Wallet) GetBitcoinAccountXPub(index uint32) (xpub string, err error) {
+// GetBitcoinBIP44AccountXPub returns the xpub key of account specified by index using BIP44 derivation scheme
+func (w *Wallet) GetBitcoinBIP44AccountXPub(index uint32) (xpub string, err error) {
 	// ensure wallet is unlocked before trying to work with it
 	if !w.isInitialized {
 		err = errWalletNotInitialized
@@ -213,9 +213,9 @@ func (w *Wallet) GetBitcoinAccountXPub(index uint32) (xpub string, err error) {
 	return
 }
 
-// GenerateBitcoinAccountXPubQR creates a QR code image of account's xpub key based off BIP44
-func (w *Wallet) GenerateBitcoinAccountXPubQR(index uint32) (img string, err error) {
-	xpub, err := w.GetBitcoinAccountXPub(index)
+// GenerateBitcoinBIP44AccountXPubQR creates a QR code image of account's xpub key based off BIP44
+func (w *Wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, err error) {
+	xpub, err := w.GetBitcoinBIP44AccountXPub(index)
 	if err != nil {
 		return
 	}
