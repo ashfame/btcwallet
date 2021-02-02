@@ -26,6 +26,7 @@ var errIncorrectDerivationPath = errors.New("incorrect derivation path provided"
 type Wallet struct {
 	debug         bool
 	network       string
+	qrpath        string
 	mnemonic      string
 	passphrase    string
 	seed          []byte
@@ -223,7 +224,7 @@ func (w *Wallet) GenerateBitcoinAccountXPubQR(index uint32) (img string, err err
 	// but first delete all image files in qr directory
 	w.cleanQRDir()
 	img = "qr_m_44_0_0_" + fmt.Sprintf("%d", index) + ".png" // filename
-	err = qrcode.WriteFile(xpub, qrcode.Medium, 256, "static/qr/"+img)
+	err = qrcode.WriteFile(xpub, qrcode.Medium, 256, w.getQRDir()+img)
 	if err != nil {
 		return "", err
 	}
@@ -250,7 +251,7 @@ func (w *Wallet) GenerateEncryptedMnemonicQR(password string) (img string, err e
 	w.cleanQRDir()
 	now := time.Now()
 	img = "export_" + strconv.FormatInt(now.Unix(), 10) + ".png" // filename
-	err = qrcode.WriteFile(e, qrcode.Low, 256, "static/qr/"+img)
+	err = qrcode.WriteFile(e, qrcode.Low, 256, w.getQRDir()+img)
 	if err != nil {
 		return "", err
 	}
@@ -267,8 +268,22 @@ func (w *Wallet) Reset() {
 	w.cleanQRDir()
 }
 
+// SetQRDir sets the path of the directory where QR code images will be saved
+func (w *Wallet) getQRDir() string {
+	if w.qrpath == "" {
+		return "static/qr/" // safe default
+	}
+
+	return w.qrpath
+}
+
+// SetQRDir sets the path of the directory where QR code images will be saved
+func (w *Wallet) SetQRDir(path string) {
+	w.qrpath = path
+}
+
 func (w *Wallet) cleanQRDir() error {
-	d, err := os.Open("static/qr/")
+	d, err := os.Open(w.getQRDir())
 	if err != nil {
 		return err
 	}
@@ -278,7 +293,7 @@ func (w *Wallet) cleanQRDir() error {
 		return err
 	}
 	for _, name := range names {
-		err = os.RemoveAll(filepath.Join("static/qr/", name))
+		err = os.RemoveAll(filepath.Join(w.getQRDir(), name))
 		if err != nil {
 			return err
 		}
