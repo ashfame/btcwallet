@@ -19,7 +19,6 @@ import (
 	"github.com/tyler-smith/go-bip39"
 )
 
-var debug bool
 var network string
 
 var errWalletNotInitialized = errors.New("wallet has not been initialized")
@@ -27,6 +26,7 @@ var errIncorrectDerivationPath = errors.New("incorrect derivation path provided"
 
 // Wallet represents a Bitcoin Wallet
 type Wallet struct {
+	debug         bool
 	mnemonic      string
 	passphrase    string
 	seed          []byte
@@ -172,7 +172,7 @@ func (w *Wallet) getBitcoinAccountXPub(index uint32) (xpub string, err error) {
 
 	xpub = accountXPub.String()
 
-	if debug {
+	if w.debug {
 		log.Printf("xpub: %s\n", xpub)
 	}
 
@@ -201,7 +201,7 @@ func (w *Wallet) initializeWallet(mnemonic string, passphrase string) (err error
 	// generate seed from mnemonic and passphrase
 	seed := bip39.NewSeed(mnemonic, passphrase)
 
-	if debug {
+	if w.debug {
 		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
 	}
 
@@ -228,7 +228,7 @@ func (w *Wallet) initializeWallet(mnemonic string, passphrase string) (err error
 }
 
 func (w *Wallet) initializeWalletBySeed(seed []byte) (err error) {
-	if debug {
+	if w.debug {
 		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
 	}
 
