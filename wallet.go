@@ -47,6 +47,16 @@ func (w *Wallet) IsWalletReady() bool {
 	return w.isInitialized
 }
 
+// TurnDebugOn method turns debug mode on, which spits additional output on standard output
+func (w *Wallet) TurnDebugOn() {
+	w.debug = true
+}
+
+// TurnDebugOff method turns debug mode on, which spits additional output on standard output
+func (w *Wallet) TurnDebugOff() {
+	w.debug = false
+}
+
 // InitializeWallet initializes the wallet based on the specified mnemonic and passphrase
 func (w *Wallet) InitializeWallet(mnemonic string, passphrase string) (err error) {
 	// generate seed from mnemonic and passphrase
