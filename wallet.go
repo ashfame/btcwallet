@@ -35,11 +35,13 @@ type Wallet struct {
 }
 
 func (w *Wallet) getChaincfgParams() *chaincfg.Params {
-	if w.network == "RegressionNet" {
+	if w.network == "TestNet3Params" {
+		return &chaincfg.TestNet3Params
+	} else if w.network == "RegressionNet" {
 		return &chaincfg.RegressionNetParams
+	} else {
+		return &chaincfg.MainNetParams
 	}
-
-	return &chaincfg.MainNetParams
 }
 
 // IsWalletReady method is used to check if a wallet has been initialized
@@ -55,6 +57,17 @@ func (w *Wallet) TurnDebugOn() {
 // TurnDebugOff method turns debug mode off, which spits additional output on standard output
 func (w *Wallet) TurnDebugOff() {
 	w.debug = false
+}
+
+// SetNetwork method is used to choose the network - MainNet, TestNet3Params, RegressionNet
+func (w *Wallet) SetNetwork(n string) {
+	if n == "TestNet3Params" {
+		w.network = "TestNet3Params"
+	} else if n == "RegressionNet" {
+		w.network = "RegressionNet"
+	} else {
+		w.network = "MainNet"
+	}
 }
 
 // InitializeWallet initializes the wallet based on the specified mnemonic and passphrase
