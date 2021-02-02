@@ -52,7 +52,7 @@ func (w *Wallet) TurnDebugOn() {
 	w.debug = true
 }
 
-// TurnDebugOff method turns debug mode on, which spits additional output on standard output
+// TurnDebugOff method turns debug mode off, which spits additional output on standard output
 func (w *Wallet) TurnDebugOff() {
 	w.debug = false
 }
