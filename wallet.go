@@ -27,70 +27,81 @@ var errIncorrectDerivationPath = errors.New("incorrect derivation path provided"
 // Wallet represents a Bitcoin Wallet
 type Wallet struct {
 	debug         bool
+	network       string
 	mnemonic      string
 	passphrase    string
 	seed          []byte
 	isInitialized bool
 }
 
-func (w *Wallet) isWalletUnlocked() bool {
-	return w.isInitialized
-}
-
 func (w *Wallet) getChaincfgParams() *chaincfg.Params {
-	if network == "RegressionNet" {
+	if w.network == "RegressionNet" {
 		return &chaincfg.RegressionNetParams
 	}
 
 	return &chaincfg.MainNetParams
 }
 
-func (w *Wallet) generateEncryptedMnemonicQR(password string) (img string, err error) {
-	if !w.isInitialized {
-		err = errWalletNotInitialized
-		return
+// IsWalletReady method is used to check if a wallet has been initialized
+func (w *Wallet) IsWalletReady() bool {
+	return w.isInitialized
+}
+
+// InitializeWallet initializes the wallet based on the specified mnemonic and passphrase
+func (w *Wallet) InitializeWallet(mnemonic string, passphrase string) (err error) {
+	// generate seed from mnemonic and passphrase
+	seed := bip39.NewSeed(mnemonic, passphrase)
+
+	if w.debug {
+		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
 	}
 
-	encrypted, salt, err := encryptUtil.EncryptUsingPassword([]byte(password), []byte(w.mnemonic))
+	// Errors that can happen while generating master node
+	// 1) Seed needs to be of right length - [ErrInvalidSeedLen]
+	// 2) Seed can be invalid as the key derived out of it isn't usable - [ErrUnusableSeed]
+	//    Requires diff seed, which would mean changing atleast one of the inputs i.e. mnemonic or passphrase
+	//    Its not possible to get a valid wallet with the combination of mnemonic and passphrase provided
+	_, err = hdkeychain.NewMaster(seed, w.getChaincfgParams())
 	if err != nil {
 		return
 	}
 
-	e := base64.StdEncoding.EncodeToString(append(encrypted, salt...))
+	// Now that a valid wallet was initialized using mnemonic & passphrase, its safe to store them
+	w.mnemonic = mnemonic
+	w.passphrase = passphrase
+	w.isInitialized = true
 
-	// generate QR code
-	// but first delete all image files in qr directory
-	w.cleanQRDir()
-	now := time.Now()
-	img = "export_" + strconv.FormatInt(now.Unix(), 10) + ".png" // filename
-	err = qrcode.WriteFile(e, qrcode.Low, 256, "static/qr/"+img)
-	if err != nil {
-		return "", err
-	}
+	// clear seed from memory
+	zero(seed)
+	seed = nil
 
 	return
 }
 
-func (w *Wallet) cleanQRDir() error {
-	d, err := os.Open("static/qr/")
+// InitializeWalletBySeed initializes the wallet based on the seed
+func (w *Wallet) InitializeWalletBySeed(seed []byte) (err error) {
+	if w.debug {
+		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
+	}
+
+	// Errors that can happen while generating master node
+	// 1) Seed needs to be of right length - [ErrInvalidSeedLen]
+	// 2) Seed can be invalid as the key derived out of it isn't usable - [ErrUnusableSeed]
+	//    Requires diff seed, which would mean changing atleast one of the inputs i.e. mnemonic or passphrase
+	//    Its not possible to get a valid wallet with the combination of mnemonic and passphrase provided
+	_, err = hdkeychain.NewMaster(seed, w.getChaincfgParams())
 	if err != nil {
-		return err
+		return
 	}
-	defer d.Close()
-	names, err := d.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	for _, name := range names {
-		err = os.RemoveAll(filepath.Join("static/qr/", name))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+
+	w.seed = seed
+	w.isInitialized = true
+
+	return
 }
 
-func (w *Wallet) getNodeKeys(path string) (xprv string, xpub string, err error) {
+// GetNodeKeys return private and public key for the derivation path specified
+func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) {
 	// ensure wallet is unlocked before trying to work with it
 	if !w.isInitialized {
 		err = errWalletNotInitialized
@@ -142,7 +153,8 @@ func (w *Wallet) getNodeKeys(path string) (xprv string, xpub string, err error) 
 	return
 }
 
-func (w *Wallet) getBitcoinAccountXPub(index uint32) (xpub string, err error) {
+// GetBitcoinAccountXPub returns the xpub key of account specified by index using BIP44 derivation scheme
+func (w *Wallet) GetBitcoinAccountXPub(index uint32) (xpub string, err error) {
 	// ensure wallet is unlocked before trying to work with it
 	if !w.isInitialized {
 		err = errWalletNotInitialized
@@ -179,8 +191,9 @@ func (w *Wallet) getBitcoinAccountXPub(index uint32) (xpub string, err error) {
 	return
 }
 
-func (w *Wallet) generateBitcoinAccountXPubQR(index uint32) (img string, err error) {
-	xpub, err := w.getBitcoinAccountXPub(index)
+// GenerateBitcoinAccountXPubQR creates a QR code image of account's xpub key based off BIP44
+func (w *Wallet) GenerateBitcoinAccountXPubQR(index uint32) (img string, err error) {
+	xpub, err := w.GetBitcoinAccountXPub(index)
 	if err != nil {
 		return
 	}
@@ -197,62 +210,59 @@ func (w *Wallet) generateBitcoinAccountXPubQR(index uint32) (img string, err err
 	return
 }
 
-func (w *Wallet) initializeWallet(mnemonic string, passphrase string) (err error) {
-	// generate seed from mnemonic and passphrase
-	seed := bip39.NewSeed(mnemonic, passphrase)
-
-	if w.debug {
-		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
+// GenerateEncryptedMnemonicQR creates a QR code image by encrypting the mnemonic with the supplied password
+func (w *Wallet) GenerateEncryptedMnemonicQR(password string) (img string, err error) {
+	if !w.isInitialized {
+		err = errWalletNotInitialized
+		return
 	}
 
-	// Errors that can happen while generating master node
-	// 1) Seed needs to be of right length - [ErrInvalidSeedLen]
-	// 2) Seed can be invalid as the key derived out of it isn't usable - [ErrUnusableSeed]
-	//    Requires diff seed, which would mean changing atleast one of the inputs i.e. mnemonic or passphrase
-	//    Its not possible to get a valid wallet with the combination of mnemonic and passphrase provided
-	_, err = hdkeychain.NewMaster(seed, w.getChaincfgParams())
+	encrypted, salt, err := encryptUtil.EncryptUsingPassword([]byte(password), []byte(w.mnemonic))
 	if err != nil {
 		return
 	}
 
-	// Now that a valid wallet was initialized using mnemonic & passphrase, its safe to store them
-	w.mnemonic = mnemonic
-	w.passphrase = passphrase
-	w.isInitialized = true
+	e := base64.StdEncoding.EncodeToString(append(encrypted, salt...))
 
-	// clear seed from memory
-	zero(seed)
-	seed = nil
-
-	return
-}
-
-func (w *Wallet) initializeWalletBySeed(seed []byte) (err error) {
-	if w.debug {
-		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
-	}
-
-	// Errors that can happen while generating master node
-	// 1) Seed needs to be of right length - [ErrInvalidSeedLen]
-	// 2) Seed can be invalid as the key derived out of it isn't usable - [ErrUnusableSeed]
-	//    Requires diff seed, which would mean changing atleast one of the inputs i.e. mnemonic or passphrase
-	//    Its not possible to get a valid wallet with the combination of mnemonic and passphrase provided
-	_, err = hdkeychain.NewMaster(seed, w.getChaincfgParams())
+	// generate QR code
+	// but first delete all image files in qr directory
+	w.cleanQRDir()
+	now := time.Now()
+	img = "export_" + strconv.FormatInt(now.Unix(), 10) + ".png" // filename
+	err = qrcode.WriteFile(e, qrcode.Low, 256, "static/qr/"+img)
 	if err != nil {
-		return
+		return "", err
 	}
-
-	w.seed = seed
-	w.isInitialized = true
 
 	return
 }
 
-func (w *Wallet) reset() {
+// Reset cleans the wallet state, as it was before initialization
+func (w *Wallet) Reset() {
 	w.mnemonic = ""
 	w.passphrase = ""
 	w.seed = nil
 	w.isInitialized = false
+	w.cleanQRDir()
+}
+
+func (w *Wallet) cleanQRDir() error {
+	d, err := os.Open("static/qr/")
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join("static/qr/", name))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // NewWallet is essentially used to get an instance of Wallet type

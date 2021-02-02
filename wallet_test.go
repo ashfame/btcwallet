@@ -111,13 +111,13 @@ func TestBIP32SpecTestVector(t *testing.T) {
 		}
 
 		vault := NewWallet()
-		err = vault.initializeWalletBySeed(seed)
+		err = vault.InitializeWalletBySeed(seed)
 		if err != nil {
 			t.Errorf("unable to initialize wallet: %s\n", err.Error())
 		}
 
 		for _, node := range table.nodes {
-			xprv, xpub, err := vault.getNodeKeys(node.path)
+			xprv, xpub, err := vault.GetNodeKeys(node.path)
 			if err != nil {
 				t.Errorf("unable to generate node for path: %s\n", err.Error())
 			}
@@ -130,6 +130,6 @@ func TestBIP32SpecTestVector(t *testing.T) {
 			}
 		}
 
-		vault.reset()
+		vault.Reset()
 	}
 }
