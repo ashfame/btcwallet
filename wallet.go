@@ -1,4 +1,4 @@
-package wallet
+package btcwallet
 
 import (
 	"encoding/base64"
