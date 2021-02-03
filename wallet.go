@@ -92,11 +92,12 @@ func (w *Wallet) InitializeWallet(mnemonic string, passphrase string) (err error
 	// Now that a valid wallet was initialized using mnemonic & passphrase, its safe to store them
 	w.mnemonic = mnemonic
 	w.passphrase = passphrase
+	w.seed = seed
 	w.isInitialized = true
 
 	// clear seed from memory
-	zero(seed)
-	seed = nil
+	// zero(seed)
+	// seed = nil
 
 	return
 }
@@ -125,8 +126,13 @@ func (w *Wallet) InitializeWalletBySeed(seed []byte) (err error) {
 
 // GenerateMnemonic generates mnemonic using cryptographically secure random number generator
 func (w *Wallet) GenerateMnemonic(lang string) string {
-	bip39.SetWordList(getWordlist(lang))
 	entropy, _ := bip39.NewEntropy(256)
+	return w.GenerateMnemonicByEntropy(lang, entropy)
+}
+
+// GenerateMnemonicByEntropy generates mnemonic based on supplied entropy
+func (w *Wallet) GenerateMnemonicByEntropy(lang string, entropy []byte) string {
+	bip39.SetWordList(getWordlist(lang))
 	mnemonic, _ := bip39.NewMnemonic(entropy)
 
 	if w.debug {
@@ -205,6 +211,16 @@ func getWordlist(lang string) []string {
 	}
 
 	return wordlists.English
+}
+
+// ExportSeed returns the seed with which the wallet is currently operating
+func (w *Wallet) ExportSeed() (seed string, err error) {
+	if !w.isInitialized {
+		err = errWalletNotInitialized
+		return
+	}
+
+	return fmt.Sprintf("%x", w.seed), nil
 }
 
 // GetNodeKeys return private and public key for the derivation path specified
