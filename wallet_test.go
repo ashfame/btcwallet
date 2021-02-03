@@ -2,13 +2,20 @@ package btcwallet
 
 import (
 	"encoding/hex"
+	"flag"
 	"testing"
 )
+
+var debug bool
 
 type node struct {
 	path   string
 	prvKey string
 	pubKey string
+}
+
+func init() {
+	flag.BoolVar(&debug, "debug", false, "specify if you want debug logs in standard output")
 }
 
 // TestBIP32SpecTestVector tests the private & pubic key derived at certain derivation paths as specified in BIP32 standard specification
@@ -111,6 +118,9 @@ func TestBIP32SpecTestVector(t *testing.T) {
 		}
 
 		vault := NewWallet()
+		if debug {
+			vault.TurnDebugOn()
+		}
 		err = vault.InitializeWalletBySeed(seed)
 		if err != nil {
 			t.Errorf("unable to initialize wallet: %s\n", err.Error())
@@ -288,6 +298,9 @@ func TestBIP39SpecTrezorTestVector(t *testing.T) {
 	}
 
 	vault := NewWallet()
+	if debug {
+		vault.TurnDebugOn()
+	}
 	for _, table := range tables {
 		entropy, err := hex.DecodeString(table.entropy)
 		if err != nil {
