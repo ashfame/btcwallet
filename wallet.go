@@ -17,6 +17,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tyler-smith/go-bip39"
+	"github.com/tyler-smith/go-bip39/wordlists"
 )
 
 var errWalletNotInitialized = errors.New("wallet has not been initialized")
@@ -120,6 +121,90 @@ func (w *Wallet) InitializeWalletBySeed(seed []byte) (err error) {
 	w.isInitialized = true
 
 	return
+}
+
+// GenerateMnemonic generates mnemonic using cryptographically secure random number generator
+func (w *Wallet) GenerateMnemonic(lang string) string {
+	bip39.SetWordList(getWordlist(lang))
+	entropy, _ := bip39.NewEntropy(256)
+	mnemonic, _ := bip39.NewMnemonic(entropy)
+
+	if w.debug {
+		log.Printf("entropy: %x", entropy)
+		log.Printf("mnemonic: %s", mnemonic)
+	}
+
+	// @TODO Clear mnemonic from memory using defer
+
+	return mnemonic
+}
+
+// IsValidMnemonic checks whether the specified mnemonic is valid or not
+func (w *Wallet) IsValidMnemonic(mnemonic string) bool {
+	// Set the wordlist to each language one by one and check for validity
+	bip39.SetWordList(wordlists.English)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.Spanish)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.Italian)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.French)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.Czech)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.Japanese)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.ChineseSimplified)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.ChineseTraditional)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+	bip39.SetWordList(wordlists.Korean)
+	if bip39.IsMnemonicValid(mnemonic) {
+		return true
+	}
+
+	return false
+}
+
+func getWordlist(lang string) []string {
+	switch lang {
+	case "English":
+		return wordlists.English
+	case "French":
+		return wordlists.French
+	case "Spanish":
+		return wordlists.Spanish
+	case "Italian":
+		return wordlists.Italian
+	case "Japanese":
+		return wordlists.Japanese
+	case "Korean":
+		return wordlists.Korean
+	case "ChineseSimplified":
+		return wordlists.ChineseSimplified
+	case "ChineseTraditional":
+		return wordlists.ChineseTraditional
+	case "Czech":
+		return wordlists.Czech
+	}
+
+	return wordlists.English
 }
 
 // GetNodeKeys return private and public key for the derivation path specified
