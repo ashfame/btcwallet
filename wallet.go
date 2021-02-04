@@ -1,7 +1,9 @@
 package btcwallet
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -15,6 +17,7 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/tyler-smith/go-bip39"
 	"github.com/tyler-smith/go-bip39/wordlists"
@@ -68,6 +71,14 @@ func (w *Wallet) SetNetwork(n string) {
 	} else {
 		w.network = "MainNet"
 	}
+}
+
+// IsNetwork returns whether the wallet is functioning as per the specified Network or not
+func (w *Wallet) IsNetwork(n string) bool {
+	if w.network == n {
+		return true
+	}
+	return false
 }
 
 // InitializeWallet initializes the wallet based on the specified mnemonic and passphrase
@@ -393,6 +404,104 @@ func (w *Wallet) GenerateEncryptedMnemonicQR(password string) (img string, err e
 	}
 
 	return
+}
+
+// ValidateBitcoinAddress checks the validity of a bitcoin address
+func (w *Wallet) ValidateBitcoinAddress(address string) bool {
+	if w.debug {
+		log.Printf("Checking %s", address)
+	}
+
+	// length & checksum validation
+	_, version, err := base58.CheckDecode(address)
+	if err != nil {
+		if w.debug {
+			log.Println(err)
+		}
+		return false
+	}
+
+	if w.debug {
+		log.Printf("validating address: address version: %s\n", hex.EncodeToString([]byte{version}))
+	}
+
+	// check version
+	if w.IsNetwork("MainNet") {
+		switch hex.EncodeToString([]byte{version}) {
+		case "00", // P2PKH
+			"05": // P2SH
+			return true
+		default:
+			return false
+		}
+	} else if w.IsNetwork("TestNet3Params") {
+		switch hex.EncodeToString([]byte{version}) {
+		case "6f": // Testnet
+			return true
+		default:
+			return false
+		}
+	} else {
+		log.Fatal("method does not support validating under networks other than MainNet. code ain't gonna write itself")
+	}
+
+	return false
+}
+
+// ValidateBitcoinXPub checks the validity of an extended public key
+func (w *Wallet) ValidateBitcoinXPub(xPub string) bool {
+	decoded := base58.Decode(xPub)
+
+	if w.debug {
+		log.Printf("length of decoded is %d", len(decoded))
+	}
+
+	// length intact? 82 bytes
+	//   version (4) || depth (1) || parent fingerprint (4)) ||
+	//   child num (4) || chain code (32) || key data (33) || checksum (4)
+	if len(decoded) < 82 {
+		if w.debug {
+			log.Printf("\nInvalid length for xPub: %d", len(decoded))
+		}
+		return false
+	}
+
+	// valid checksum?
+	var cksum1, cksum2 [4]byte
+	copy(cksum1[:], decoded[len(decoded)-4:])
+
+	// hash it twice and take first 4 characters to generate checksum
+	h := sha256.Sum256(decoded[:len(decoded)-4])
+	h2 := sha256.Sum256(h[:])
+	copy(cksum2[:], h2[:4])
+
+	if cksum2 != cksum1 {
+		if w.debug {
+			log.Printf("\nChecksum mismatch for xPub key. Expected: %s Found: %s", hex.EncodeToString(cksum2[:]), hex.EncodeToString(cksum1[:]))
+		}
+		return false
+	}
+
+	payload := decoded[:len(decoded)-4]
+	if w.debug {
+		log.Printf("\nPayload: %s", hex.EncodeToString(payload))
+	}
+
+	version := hex.EncodeToString(payload[:4])
+
+	if w.IsNetwork("MainNet") {
+		// for MainNet version would always be 0488b21e
+		if version != "0488b21e" {
+			if w.debug {
+				log.Printf("\nVersion mismatch. Expected: 0488b21e Found: %s", version)
+			}
+			return false
+		}
+	} else {
+		log.Fatal("method does not support validating under networks other than MainNet. code ain't gonna write itself")
+	}
+
+	return true
 }
 
 // Reset cleans the wallet state, as it was before initialization
