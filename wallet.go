@@ -314,6 +314,41 @@ func (w *Wallet) GetBitcoinBIP44AccountXPub(index uint32) (xpub string, err erro
 	return
 }
 
+// GenerateBitcoinP2PKHAddressByXPub generates legacy address as per BIP44 on specified index on internal/external chain
+func (w *Wallet) GenerateBitcoinP2PKHAddressByXPub(xpub string, index uint32, chain string) (address string, err error) {
+	accountKey, err := hdkeychain.NewKeyFromString(xpub)
+	if err != nil {
+		return
+	}
+
+	var chainIndex uint32
+	if chain == "external" {
+		chainIndex = 0
+	} else if chain == "internal" {
+		chainIndex = 1
+	}
+
+	chainNode, err := accountKey.Derive(chainIndex)
+	if err != nil {
+		return
+	}
+	indexNode, err := chainNode.Derive(index)
+	if err != nil {
+		return
+	}
+	indexNodePub, err := indexNode.Neuter()
+	if err != nil {
+		return
+	}
+	indexAddress, err := indexNodePub.Address(w.getChaincfgParams())
+	if err != nil {
+		return
+	}
+
+	address = indexAddress.String()
+	return
+}
+
 // GenerateBitcoinBIP44AccountXPubQR creates a QR code image of account's xpub key based off BIP44
 func (w *Wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, err error) {
 	xpub, err := w.GetBitcoinBIP44AccountXPub(index)
