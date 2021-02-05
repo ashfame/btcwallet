@@ -1,7 +1,6 @@
 package btcwallet
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -448,57 +447,19 @@ func (w *Wallet) ValidateBitcoinAddress(address string) bool {
 	return false
 }
 
-// ValidateBitcoinXPub checks the validity of an extended public key
+// ValidateBitcoinXPub checks the validity of an extended public key as per the current network
 func (w *Wallet) ValidateBitcoinXPub(xPub string) bool {
-	decoded := base58.Decode(xPub)
-
-	if w.debug {
-		log.Printf("length of decoded is %d", len(decoded))
-	}
-
-	// length intact? 82 bytes
-	//   version (4) || depth (1) || parent fingerprint (4)) ||
-	//   child num (4) || chain code (32) || key data (33) || checksum (4)
-	if len(decoded) < 82 {
-		if w.debug {
-			log.Printf("\nInvalid length for xPub: %d", len(decoded))
-		}
+	key, err := hdkeychain.NewKeyFromString(xPub)
+	if err != nil {
 		return false
 	}
 
-	// valid checksum?
-	var cksum1, cksum2 [4]byte
-	copy(cksum1[:], decoded[len(decoded)-4:])
-
-	// hash it twice and take first 4 characters to generate checksum
-	h := sha256.Sum256(decoded[:len(decoded)-4])
-	h2 := sha256.Sum256(h[:])
-	copy(cksum2[:], h2[:4])
-
-	if cksum2 != cksum1 {
-		if w.debug {
-			log.Printf("\nChecksum mismatch for xPub key. Expected: %s Found: %s", hex.EncodeToString(cksum2[:]), hex.EncodeToString(cksum1[:]))
-		}
+	if key.IsPrivate() {
 		return false
 	}
 
-	payload := decoded[:len(decoded)-4]
-	if w.debug {
-		log.Printf("\nPayload: %s", hex.EncodeToString(payload))
-	}
-
-	version := hex.EncodeToString(payload[:4])
-
-	if w.IsNetwork("MainNet") {
-		// for MainNet version would always be 0488b21e
-		if version != "0488b21e" {
-			if w.debug {
-				log.Printf("\nVersion mismatch. Expected: 0488b21e Found: %s", version)
-			}
-			return false
-		}
-	} else {
-		log.Fatal("method does not support validating under networks other than MainNet. code ain't gonna write itself")
+	if !key.IsForNet(w.getChaincfgParams()) {
+		return false
 	}
 
 	return true
