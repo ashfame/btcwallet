@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"flag"
 	"testing"
+
+	"github.com/btcsuite/btcutil/hdkeychain"
 )
 
 var debug bool
@@ -16,6 +18,145 @@ type node struct {
 
 func init() {
 	flag.BoolVar(&debug, "debug", false, "specify if you want debug logs in standard output")
+}
+
+// TestDerivationIndexesFromPath tests the conversion of derivation path string into an array of indexes based on which child nodes will be repeatedly derived
+func TestDerivationIndexesFromPath(t *testing.T) {
+	tables := []struct {
+		path string
+		dI   []uint32
+		err  error
+	}{
+		{
+			path: "",
+			dI:   []uint32{},
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m",
+			dI:   []uint32{},
+			err:  nil,
+		},
+		{
+			path: "m/",
+			dI:   []uint32{},
+			err:  nil,
+		},
+		{
+			path: "a",
+			dI:   []uint32{},
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/1",
+			dI: []uint32{
+				1,
+			},
+			err: nil,
+		},
+		{
+			path: "M/1",
+			dI: []uint32{
+				1,
+			},
+			err: nil,
+		},
+		{
+			path: "m/1/2",
+			dI: []uint32{
+				1,
+				2,
+			},
+			err: nil,
+		},
+		{
+			path: "m/a",
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/1H",
+			dI: []uint32{
+				1 + hdkeychain.HardenedKeyStart,
+			},
+			err: nil,
+		},
+		{
+			path: "m/H1",
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/1Hh",
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/1H'",
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/1Ha",
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/2h",
+			dI: []uint32{
+				2 + hdkeychain.HardenedKeyStart,
+			},
+			err: nil,
+		},
+		{
+			path: "m/3'",
+			dI: []uint32{
+				3 + hdkeychain.HardenedKeyStart,
+			},
+			err: nil,
+		},
+		{
+			path: "m/4294967295", // max valid index, (2^32 - 1)
+			dI: []uint32{
+				4294967295,
+			},
+			err: nil,
+		},
+		{
+			path: "m/4294967295H",
+			err:  errIncorrectDerivationPath,
+		},
+		{
+			path: "m/1/2'/3/4'/5/6h/7H",
+			dI: []uint32{
+				1,
+				2 + hdkeychain.HardenedKeyStart,
+				3,
+				4 + hdkeychain.HardenedKeyStart,
+				5,
+				6 + hdkeychain.HardenedKeyStart,
+				7 + hdkeychain.HardenedKeyStart,
+			},
+			err: nil,
+		},
+	}
+
+	vault := NewWallet()
+	for _, table := range tables {
+		dI, err := vault.getDerivationIndexesFromPath(table.path)
+		if err != table.err {
+			t.Errorf("unexpected error encountered while generating derivation indexes from path: %s", table.path)
+		}
+
+		indexesMismatch := false
+		if len(dI) != len(table.dI) {
+			indexesMismatch = true
+		}
+		for index := range dI {
+			if dI[index] != table.dI[index] {
+				indexesMismatch = true
+			}
+		}
+
+		if indexesMismatch {
+			t.Errorf("derivation indexes do not match for path: %s, expected: %v, got: %v", table.path, table.dI, dI)
+		}
+	}
 }
 
 // TestBIP32SpecTestVector tests the private & pubic key derived at certain derivation paths as specified in BIP32 standard specification

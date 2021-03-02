@@ -233,25 +233,15 @@ func (w *Wallet) ExportSeed() (seed string, err error) {
 	return fmt.Sprintf("%x", w.seed), nil
 }
 
-// GetNodeKeys return private and public key for the derivation path specified
-func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) {
-	// ensure wallet is unlocked before trying to work with it
-	if !w.isInitialized {
-		err = errWalletNotInitialized
-		return
-	}
-
-	node, err := hdkeychain.NewMaster(w.seed, w.getChaincfgParams())
-	if err != nil {
-		return
-	}
-
-	// make sure path is correctly specified
-	// also remove trailing slash, if present
+// Function accepts the derivation path in string and returns an array of indexes to derive nodes
+func (w *Wallet) getDerivationIndexesFromPath(path string) (d []uint32, err error) {
+	// remove trailing slash, if present
+	// let's make sure path is correctly specified
 	pathArr := strings.Split(strings.TrimSuffix(path, "/"), "/")
 	for index, pathPart := range pathArr {
 		if index == 0 {
-			if pathPart != "m" {
+			// path must start with m or M
+			if pathPart != "m" && pathPart != "M" {
 				err = errIncorrectDerivationPath
 				return
 			}
@@ -259,19 +249,88 @@ func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) 
 			continue
 		}
 
-		trimmed := strings.TrimSuffix(pathPart, "H")
-		t, _ := strconv.ParseUint(trimmed, 10, 32)
-		deriveIndex := uint32(t)
-		// suffix was actually present, so hardened derivation
-		if trimmed != pathPart {
+		// do we need to do a hardened derivation?
+		// represented by 1H, 1h, 1'
+		hardenedDerivation := false
+		var trimmed string
+		for _, hardenedMarker := range []string{"H", "h", "'"} {
+			trimmed = strings.TrimSuffix(pathPart, hardenedMarker)
+			if hardenedDerivation {
+				// if already a single hardened marker has been found
+				if trimmed != pathPart {
+					// still another hardened marker found
+					return nil, errIncorrectDerivationPath
+				}
+			} else {
+				// hardened marker was found for the first time in this loop
+				if trimmed != pathPart {
+					// hardened suffix was actually present
+					hardenedDerivation = true
+				}
+				// overwrite trimmed over pathPart so that in next iteraton,
+				// we can catch if further hardened markers are removed in cases like Hh,
+				// which will be treated as invalid
+				pathPart = trimmed
+			}
+		}
+
+		var deriveIndex uint32
+		if _, err := strconv.Atoi(trimmed); err == nil {
+			// looks like a number
+			t, _ := strconv.ParseUint(trimmed, 10, 32)
+			deriveIndex = uint32(t)
+		} else {
+			// invalid character, an alphabet was encountered
+			return nil, errIncorrectDerivationPath
+		}
+
+		if hardenedDerivation {
+			if deriveIndex > hdkeychain.HardenedKeyStart {
+				return nil, errIncorrectDerivationPath
+			}
 			deriveIndex += uint32(hdkeychain.HardenedKeyStart)
 		}
 
-		node, err = node.Derive(deriveIndex)
+		d = append(d, deriveIndex)
+	}
+
+	return d, nil
+}
+
+// GetNode returns the node for a particular path
+func (w *Wallet) GetNode(path string) (node *hdkeychain.ExtendedKey, err error) {
+	// ensure wallet is unlocked before trying to work with it
+	if !w.isInitialized {
+		err = errWalletNotInitialized
+		return
+	}
+
+	node, err = hdkeychain.NewMaster(w.seed, w.getChaincfgParams())
+	if err != nil {
+		return
+	}
+
+	indexes, err := w.getDerivationIndexesFromPath(path)
+	if err != nil {
+		return
+	}
+
+	for _, d := range indexes {
+		node, err = node.Derive(d)
 		if err != nil {
 			log.Println(err)
-			return "", "", errIncorrectDerivationPath
+			return nil, errIncorrectDerivationPath
 		}
+	}
+
+	return node, nil
+}
+
+// GetNodeKeys return private and public key for the derivation path specified
+func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) {
+	node, err := w.GetNode(path)
+	if err != nil {
+		return
 	}
 
 	// get private key
