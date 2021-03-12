@@ -530,7 +530,7 @@ func (w *wallet) Reset() {
 	w.cleanQRDir()
 }
 
-// SetQRDir sets the path of the directory where QR code images will be saved
+// getQRDir returns the path of the directory where QR code images will be saved
 func (w *wallet) getQRDir() string {
 	if w.qrpath == "" {
 		return "static/qr/" // safe default
