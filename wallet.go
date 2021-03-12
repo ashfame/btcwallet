@@ -74,10 +74,7 @@ func (w *Wallet) SetNetwork(n string) {
 
 // IsNetwork returns whether the wallet is functioning as per the specified Network or not
 func (w *Wallet) IsNetwork(n string) bool {
-	if w.network == n {
-		return true
-	}
-	return false
+	return w.network == n
 }
 
 // InitializeWallet initializes the wallet based on the specified mnemonic and passphrase
