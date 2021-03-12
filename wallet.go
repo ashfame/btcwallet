@@ -25,8 +25,8 @@ import (
 var errWalletNotInitialized = errors.New("wallet has not been initialized")
 var errIncorrectDerivationPath = errors.New("incorrect derivation path provided")
 
-// Wallet represents a Bitcoin Wallet
-type Wallet struct {
+// wallet represents a Bitcoin wallet
+type wallet struct {
 	debug         bool
 	network       string
 	qrpath        string
@@ -36,7 +36,7 @@ type Wallet struct {
 	isInitialized bool
 }
 
-func (w *Wallet) getChaincfgParams() *chaincfg.Params {
+func (w *wallet) getChaincfgParams() *chaincfg.Params {
 	if w.network == "TestNet3Params" {
 		return &chaincfg.TestNet3Params
 	} else if w.network == "RegressionNet" {
@@ -47,22 +47,22 @@ func (w *Wallet) getChaincfgParams() *chaincfg.Params {
 }
 
 // IsWalletReady method is used to check if a wallet has been initialized
-func (w *Wallet) IsWalletReady() bool {
+func (w *wallet) IsWalletReady() bool {
 	return w.isInitialized
 }
 
 // TurnDebugOn method turns debug mode on, which spits additional output on standard output
-func (w *Wallet) TurnDebugOn() {
+func (w *wallet) TurnDebugOn() {
 	w.debug = true
 }
 
 // TurnDebugOff method turns debug mode off, which spits additional output on standard output
-func (w *Wallet) TurnDebugOff() {
+func (w *wallet) TurnDebugOff() {
 	w.debug = false
 }
 
 // SetNetwork method is used to choose the network - MainNet, TestNet3Params, RegressionNet
-func (w *Wallet) SetNetwork(n string) {
+func (w *wallet) SetNetwork(n string) {
 	if n == "TestNet3Params" {
 		w.network = "TestNet3Params"
 	} else if n == "RegressionNet" {
@@ -73,12 +73,12 @@ func (w *Wallet) SetNetwork(n string) {
 }
 
 // IsNetwork returns whether the wallet is functioning as per the specified Network or not
-func (w *Wallet) IsNetwork(n string) bool {
+func (w *wallet) IsNetwork(n string) bool {
 	return w.network == n
 }
 
 // InitializeWallet initializes the wallet based on the specified mnemonic and passphrase
-func (w *Wallet) InitializeWallet(mnemonic string, passphrase string) (err error) {
+func (w *wallet) InitializeWallet(mnemonic string, passphrase string) (err error) {
 	// generate seed from mnemonic and passphrase
 	seed := bip39.NewSeed(mnemonic, passphrase)
 
@@ -110,7 +110,7 @@ func (w *Wallet) InitializeWallet(mnemonic string, passphrase string) (err error
 }
 
 // InitializeWalletBySeed initializes the wallet based on the seed
-func (w *Wallet) InitializeWalletBySeed(seed []byte) (err error) {
+func (w *wallet) InitializeWalletBySeed(seed []byte) (err error) {
 	if w.debug {
 		log.Printf("seed[len:%d]: %x", len([]byte(seed)), seed)
 	}
@@ -132,13 +132,13 @@ func (w *Wallet) InitializeWalletBySeed(seed []byte) (err error) {
 }
 
 // GenerateMnemonic generates mnemonic using cryptographically secure random number generator
-func (w *Wallet) GenerateMnemonic(lang string) string {
+func (w *wallet) GenerateMnemonic(lang string) string {
 	entropy, _ := bip39.NewEntropy(256)
 	return w.GenerateMnemonicByEntropy(lang, entropy)
 }
 
 // GenerateMnemonicByEntropy generates mnemonic based on supplied entropy
-func (w *Wallet) GenerateMnemonicByEntropy(lang string, entropy []byte) string {
+func (w *wallet) GenerateMnemonicByEntropy(lang string, entropy []byte) string {
 	bip39.SetWordList(getWordlist(lang))
 	mnemonic, _ := bip39.NewMnemonic(entropy)
 
@@ -153,7 +153,7 @@ func (w *Wallet) GenerateMnemonicByEntropy(lang string, entropy []byte) string {
 }
 
 // IsValidMnemonic checks whether the specified mnemonic is valid or not
-func (w *Wallet) IsValidMnemonic(mnemonic string) bool {
+func (w *wallet) IsValidMnemonic(mnemonic string) bool {
 	// Set the wordlist to each language one by one and check for validity
 	bip39.SetWordList(wordlists.English)
 	if bip39.IsMnemonicValid(mnemonic) {
@@ -221,7 +221,7 @@ func getWordlist(lang string) []string {
 }
 
 // ExportSeed returns the seed with which the wallet is currently operating
-func (w *Wallet) ExportSeed() (seed string, err error) {
+func (w *wallet) ExportSeed() (seed string, err error) {
 	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
 		return
@@ -231,7 +231,7 @@ func (w *Wallet) ExportSeed() (seed string, err error) {
 }
 
 // Function accepts the derivation path in string and returns an array of indexes to derive nodes
-func (w *Wallet) getDerivationIndexesFromPath(path string) (d []uint32, err error) {
+func (w *wallet) getDerivationIndexesFromPath(path string) (d []uint32, err error) {
 	// remove trailing slash, if present
 	// let's make sure path is correctly specified
 	pathArr := strings.Split(strings.TrimSuffix(path, "/"), "/")
@@ -295,7 +295,7 @@ func (w *Wallet) getDerivationIndexesFromPath(path string) (d []uint32, err erro
 }
 
 // GetNode returns the node for a particular path
-func (w *Wallet) GetNode(path string) (node *hdkeychain.ExtendedKey, err error) {
+func (w *wallet) GetNode(path string) (node *hdkeychain.ExtendedKey, err error) {
 	// ensure wallet is unlocked before trying to work with it
 	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
@@ -324,7 +324,7 @@ func (w *Wallet) GetNode(path string) (node *hdkeychain.ExtendedKey, err error) 
 }
 
 // GetNodeKeys return private and public key for the derivation path specified
-func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) {
+func (w *wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) {
 	node, err := w.GetNode(path)
 	if err != nil {
 		return
@@ -343,7 +343,7 @@ func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) 
 }
 
 // GetBitcoinBIP44AccountXPub returns the xpub key of account specified by index using BIP44 derivation scheme
-func (w *Wallet) GetBitcoinBIP44AccountXPub(index uint32) (xpub string, err error) {
+func (w *wallet) GetBitcoinBIP44AccountXPub(index uint32) (xpub string, err error) {
 	// ensure wallet is unlocked before trying to work with it
 	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
@@ -381,7 +381,7 @@ func (w *Wallet) GetBitcoinBIP44AccountXPub(index uint32) (xpub string, err erro
 }
 
 // GenerateBitcoinP2PKHAddressByXPub generates legacy address as per BIP44 on specified index on internal/external chain
-func (w *Wallet) GenerateBitcoinP2PKHAddressByXPub(xpub string, index uint32, chain string) (address string, err error) {
+func (w *wallet) GenerateBitcoinP2PKHAddressByXPub(xpub string, index uint32, chain string) (address string, err error) {
 	accountKey, err := hdkeychain.NewKeyFromString(xpub)
 	if err != nil {
 		return
@@ -416,7 +416,7 @@ func (w *Wallet) GenerateBitcoinP2PKHAddressByXPub(xpub string, index uint32, ch
 }
 
 // GenerateBitcoinBIP44AccountXPubQR creates a QR code image of account's xpub key based off BIP44
-func (w *Wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, err error) {
+func (w *wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, err error) {
 	xpub, err := w.GetBitcoinBIP44AccountXPub(index)
 	if err != nil {
 		return
@@ -435,7 +435,7 @@ func (w *Wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, er
 }
 
 // GenerateEncryptedMnemonicQR creates a QR code image by encrypting the mnemonic with the supplied password
-func (w *Wallet) GenerateEncryptedMnemonicQR(password string) (img string, err error) {
+func (w *wallet) GenerateEncryptedMnemonicQR(password string) (img string, err error) {
 	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
 		return
@@ -462,7 +462,7 @@ func (w *Wallet) GenerateEncryptedMnemonicQR(password string) (img string, err e
 }
 
 // ValidateBitcoinAddress checks the validity of a bitcoin address
-func (w *Wallet) ValidateBitcoinAddress(address string) bool {
+func (w *wallet) ValidateBitcoinAddress(address string) bool {
 	if w.debug {
 		log.Printf("Checking %s", address)
 	}
@@ -504,7 +504,7 @@ func (w *Wallet) ValidateBitcoinAddress(address string) bool {
 }
 
 // ValidateBitcoinXPub checks the validity of an extended public key as per the current network
-func (w *Wallet) ValidateBitcoinXPub(xPub string) bool {
+func (w *wallet) ValidateBitcoinXPub(xPub string) bool {
 	key, err := hdkeychain.NewKeyFromString(xPub)
 	if err != nil {
 		return false
@@ -522,7 +522,7 @@ func (w *Wallet) ValidateBitcoinXPub(xPub string) bool {
 }
 
 // Reset cleans the wallet state, as it was before initialization
-func (w *Wallet) Reset() {
+func (w *wallet) Reset() {
 	w.mnemonic = ""
 	w.passphrase = ""
 	w.seed = nil
@@ -531,7 +531,7 @@ func (w *Wallet) Reset() {
 }
 
 // SetQRDir sets the path of the directory where QR code images will be saved
-func (w *Wallet) getQRDir() string {
+func (w *wallet) getQRDir() string {
 	if w.qrpath == "" {
 		return "static/qr/" // safe default
 	}
@@ -540,11 +540,11 @@ func (w *Wallet) getQRDir() string {
 }
 
 // SetQRDir sets the path of the directory where QR code images will be saved
-func (w *Wallet) SetQRDir(path string) {
+func (w *wallet) SetQRDir(path string) {
 	w.qrpath = path
 }
 
-func (w *Wallet) cleanQRDir() error {
+func (w *wallet) cleanQRDir() error {
 	d, err := os.Open(w.getQRDir())
 	if err != nil {
 		return err
@@ -564,8 +564,8 @@ func (w *Wallet) cleanQRDir() error {
 }
 
 // NewWallet is essentially used to get an instance of Wallet type
-func NewWallet() *Wallet {
-	w := Wallet{}
+func NewWallet() *wallet {
+	w := wallet{}
 	w.SetNetwork("") // set default network - MainNet
 	return &w
 }
