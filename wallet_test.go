@@ -187,6 +187,41 @@ func TestNetworkSelection(t *testing.T) {
 	}
 }
 
+func TestExportSeed(t *testing.T) {
+	vault := NewWallet()
+
+	tables := []struct {
+		mnemonic   string
+		passphrase string
+		seed       string
+	}{
+		{
+			mnemonic:   "giggle raw hedgehog subject protect nasty desk churn similar utility square teach lemon zebra wool island derive identify bulk control tragic blue youth base",
+			passphrase: "",
+			seed:       "523bcc75994e2fb6b699e7663b66ea6122e2dc014228f2c818f44e28e15c5de8f697c7e11a095d177cfb317a808495602ee3926dddeb429566b6a6d04eb2997c",
+		},
+		{
+			mnemonic:   "giggle raw hedgehog subject protect nasty desk churn similar utility square teach lemon zebra wool island derive identify bulk control tragic blue youth base",
+			passphrase: "hellomarselonmuskcalling",
+			seed:       "307199eee4c76a939c634701716556eac0a2960fda938c2c8c157944f174cc1ee96e770003d53d8c91c73218937564894a7705973b6d9ce74e5348d659bfe405",
+		},
+	}
+
+	for _, table := range tables {
+		vault.InitializeWallet(table.mnemonic, table.passphrase)
+		seed, err := vault.ExportSeed()
+		if err != nil {
+			t.Errorf("wallet didn't return seed, error: %v", err)
+		}
+
+		if seed != table.seed {
+			t.Errorf("seed didn't match.\nExpected: %s\nGot: %s", table.seed, seed)
+		}
+
+		vault.Reset()
+	}
+}
+
 // TestBIP32SpecTestVector tests the private & pubic key derived at certain derivation paths as specified in BIP32 standard specification
 func TestBIP32SpecTestVector(t *testing.T) {
 	tables := []struct {
