@@ -188,11 +188,7 @@ func (w *wallet) IsValidMnemonic(mnemonic string) bool {
 		return true
 	}
 	bip39.SetWordList(wordlists.Korean)
-	if bip39.IsMnemonicValid(mnemonic) {
-		return true
-	}
-
-	return false
+	return bip39.IsMnemonicValid(mnemonic)
 }
 
 func getWordlist(lang string) []string {
