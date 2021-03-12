@@ -426,7 +426,7 @@ func (w *wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, er
 	// but first delete all image files in qr directory
 	w.cleanQRDir()
 	img = "qr_m_44_0_0_" + fmt.Sprintf("%d", index) + ".png" // filename
-	err = qrcode.WriteFile(xpub, qrcode.Medium, 256, w.getQRDir()+img)
+	err = qrcode.WriteFile(xpub, qrcode.Medium, 256, filepath.Join(w.getQRDir(), img))
 	if err != nil {
 		return "", err
 	}
@@ -453,7 +453,7 @@ func (w *wallet) GenerateEncryptedMnemonicQR(password string) (img string, err e
 	w.cleanQRDir()
 	now := time.Now()
 	img = "export_" + strconv.FormatInt(now.Unix(), 10) + ".png" // filename
-	err = qrcode.WriteFile(e, qrcode.Low, 256, w.getQRDir()+img)
+	err = qrcode.WriteFile(e, qrcode.Low, 256, filepath.Join(w.getQRDir(), img))
 	if err != nil {
 		return "", err
 	}
