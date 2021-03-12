@@ -225,7 +225,7 @@ func getWordlist(lang string) []string {
 
 // ExportSeed returns the seed with which the wallet is currently operating
 func (w *Wallet) ExportSeed() (seed string, err error) {
-	if !w.isInitialized {
+	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
 		return
 	}
@@ -300,7 +300,7 @@ func (w *Wallet) getDerivationIndexesFromPath(path string) (d []uint32, err erro
 // GetNode returns the node for a particular path
 func (w *Wallet) GetNode(path string) (node *hdkeychain.ExtendedKey, err error) {
 	// ensure wallet is unlocked before trying to work with it
-	if !w.isInitialized {
+	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
 		return
 	}
@@ -348,7 +348,7 @@ func (w *Wallet) GetNodeKeys(path string) (xprv string, xpub string, err error) 
 // GetBitcoinBIP44AccountXPub returns the xpub key of account specified by index using BIP44 derivation scheme
 func (w *Wallet) GetBitcoinBIP44AccountXPub(index uint32) (xpub string, err error) {
 	// ensure wallet is unlocked before trying to work with it
-	if !w.isInitialized {
+	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
 		return
 	}
@@ -439,7 +439,7 @@ func (w *Wallet) GenerateBitcoinBIP44AccountXPubQR(index uint32) (img string, er
 
 // GenerateEncryptedMnemonicQR creates a QR code image by encrypting the mnemonic with the supplied password
 func (w *Wallet) GenerateEncryptedMnemonicQR(password string) (img string, err error) {
-	if !w.isInitialized {
+	if !w.IsWalletReady() {
 		err = errWalletNotInitialized
 		return
 	}
