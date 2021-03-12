@@ -159,6 +159,34 @@ func TestDerivationIndexesFromPath(t *testing.T) {
 	}
 }
 
+// TestNetworkSelection tests whether the network is correctly configured
+func TestNetworkSelection(t *testing.T) {
+	vault := NewWallet()
+
+	// default network
+	if !vault.IsNetwork("MainNet") {
+		t.Errorf("MainNet isn't the default network. Current network configured: %s", vault.network)
+	}
+
+	// setting invalid / unexpected network
+	vault.SetNetwork("unexpected-invalid")
+	if !vault.IsNetwork("MainNet") {
+		t.Errorf("MainNet isn't the fallback network when invalid network is specified. Current network configured: %s", vault.network)
+	}
+
+	// setting RegressionNet
+	vault.SetNetwork("RegressionNet")
+	if !vault.IsNetwork("RegressionNet") {
+		t.Errorf("Unexpected network configured: %s, Expected: RegressionNet", vault.network)
+	}
+
+	// setting TestNet3Params
+	vault.SetNetwork("TestNet3Params")
+	if !vault.IsNetwork("TestNet3Params") {
+		t.Errorf("Unexpected network configured: %s, Expected: TestNet3Params", vault.network)
+	}
+}
+
 // TestBIP32SpecTestVector tests the private & pubic key derived at certain derivation paths as specified in BIP32 standard specification
 func TestBIP32SpecTestVector(t *testing.T) {
 	tables := []struct {

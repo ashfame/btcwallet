@@ -565,7 +565,9 @@ func (w *Wallet) cleanQRDir() error {
 
 // NewWallet is essentially used to get an instance of Wallet type
 func NewWallet() *Wallet {
-	return &Wallet{}
+	w := Wallet{}
+	w.SetNetwork("") // set default network - MainNet
+	return &w
 }
 
 // zero sets all bytes in the passed slice to zero.  This is used to
